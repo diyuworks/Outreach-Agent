@@ -1,0 +1,19 @@
+# Sensitive credentials & environment
+.env
+credentials.json
+token.json
+
+# Exported transcripts & logs
+CHAT_HISTORY.md
+walkthrough.md
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.tmp
+
+# Operating system files
+Thumbs.db
+Desktop.ini
+.DS_Store
