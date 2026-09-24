@@ -33,14 +33,14 @@ class EmailProvider:
 
         try:
             try:
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=4) as server:
                     server.login(self.address, self.app_password)
                     server.sendmail(self.address, [to_email], msg.as_string())
                 print(f"  [SENT - EMAIL via SSL] to {to_email}")
                 return True
             except Exception as ssl_err:
                 print(f"  [EMAIL SSL 465 failed: {ssl_err}, falling back to STARTTLS 587...]")
-                with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=4) as server:
                     server.starttls()
                     server.login(self.address, self.app_password)
                     server.sendmail(self.address, [to_email], msg.as_string())
