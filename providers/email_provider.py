@@ -51,8 +51,11 @@ class EmailProvider:
                     return True
                 
                 # If Resend free tier test mode requires sending to account owner email
-                if resp.status_code == 403 and "diyaworks8824@gmail.com" in resp.text and to_email != "diyaworks8824@gmail.com":
-                    print(f"  [Resend Test Mode] Routing copy to verified developer email (diyaworks8824@gmail.com)...")
+                if resp.status_code == 403 and "only send testing emails to your own email address" in resp.text:
+                    import re
+                    match = re.search(r'\(([^)]+@[^)]+)\)', resp.text)
+                    owner_email = match.group(1) if match else "malaviyadiya496@gmail.com"
+                    print(f"  [Resend Test Sandbox] Routing to registered account ({owner_email})...")
                     alt_resp = requests.post(
                         "https://api.resend.com/emails",
                         headers={
@@ -61,13 +64,15 @@ class EmailProvider:
                         },
                         json={
                             "from": self.resend_from,
-                            "to": ["diyaworks8824@gmail.com"],
-                            "subject": f"[Outreach to {to_email}] {subject}",
-                            "text": f"--- Target Prospect: {to_email} ---\n\n{body}"
+                            "to": [owner_email],
+                            "subject": f"[Outreach for {to_email}] {subject}",
+                            "text": f"--- Target Recipient: {to_email} ---\n\n{body}"
                         },
                         timeout=8
                     )
                     if alt_resp.status_code in (200, 201):
+                        print(f"  [SENT - EMAIL via Resend Sandbox] Delivered to {owner_email}")
+                        return True
                         print(f"  [SENT - EMAIL via Resend Test Sandbox] Delivered to diyaworks8824@gmail.com")
                         return True
                 
