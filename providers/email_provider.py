@@ -32,11 +32,20 @@ class EmailProvider:
         msg["To"] = to_email
 
         try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(self.address, self.app_password)
-                server.sendmail(self.address, [to_email], msg.as_string())
-            print(f"  [SENT - EMAIL] to {to_email}")
-            return True
+            try:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    server.login(self.address, self.app_password)
+                    server.sendmail(self.address, [to_email], msg.as_string())
+                print(f"  [SENT - EMAIL via SSL] to {to_email}")
+                return True
+            except Exception as ssl_err:
+                print(f"  [EMAIL SSL 465 failed: {ssl_err}, falling back to STARTTLS 587...]")
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                    server.starttls()
+                    server.login(self.address, self.app_password)
+                    server.sendmail(self.address, [to_email], msg.as_string())
+                print(f"  [SENT - EMAIL via STARTTLS] to {to_email}")
+                return True
         except Exception as e:
             print(f"  [FAILED - EMAIL] to {to_email}: {e}")
             return False

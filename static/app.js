@@ -1120,7 +1120,14 @@ window.triggerDashboardSend = async function(leadId, channel, contactName, statu
       body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      showToast(`Server returned status ${res.status}. Check provider settings.`, 'error');
+      return;
+    }
+
     if (data.status === 'success') {
       showToast(data.message || `Successfully sent ${channel.toUpperCase()}`, 'success');
       loadDashboardData();

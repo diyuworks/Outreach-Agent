@@ -564,145 +564,149 @@ class DashboardHandler(BaseHTTPRequestHandler):
         })
 
     def handle_post_send_message(self):
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_data = self.rfile.read(content_length).decode("utf-8")
         try:
-            payload = json.loads(post_data)
-        except Exception:
-            payload = {}
-
-        lead_id = payload.get("lead_id")
-        channel = payload.get("channel", "email").lower()
-        sim_days = int(payload.get("sim_days", 0))
-        custom_subject = payload.get("subject")
-        custom_body = payload.get("body")
-
-        store = StateStore(db_path="outreach.db")
-        lead = get_lead_or_hetvi(lead_id)
-
-        if not lead:
-            self._send_json({"status": "error", "message": "Lead not found"}, 404)
-            return
-
-        # If lead was sourced from Hetvi and not yet in leads.csv, auto-persist it
-        csv_path = "data/leads.csv"
-        source = CSVLeadSource(csv_path=csv_path)
-        existing_leads = source.get_all_leads()
-        if not any(l.lead_id == lead.lead_id for l in existing_leads):
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length).decode("utf-8")
             try:
-                row = {
-                    "lead_id": lead.lead_id,
-                    "company": lead.company,
-                    "website": lead.website or "",
-                    "contact_name": lead.contact_name,
-                    "designation": lead.designation or "",
-                    "email": lead.email or "",
-                    "phone": lead.phone or "",
-                    "country": lead.country or "",
-                    "lead_score": "",
-                    "lead_status": "QUALIFIED",
-                    "primary_service": lead.primary_service or "",
-                    "personalization_hook": lead.personalization_hook or ""
-                }
-                with open(csv_path, mode="a", newline="", encoding="utf-8") as f:
-                    writer = csv_module.DictWriter(f, fieldnames=list(row.keys()))
-                    writer.writerow(row)
-            except Exception as e:
-                print(f"[SendMessage] Warning saving lead to CSV: {e}")
+                payload = json.loads(post_data)
+            except Exception:
+                payload = {}
 
-        if store.is_opted_out(lead.lead_id):
-            self._send_json({"status": "error", "message": "Lead is opted out"}, 400)
-            return
+            lead_id = payload.get("lead_id")
+            channel = payload.get("channel", "email").lower()
+            sim_days = int(payload.get("sim_days", 0))
+            custom_subject = payload.get("subject")
+            custom_body = payload.get("body")
 
-        if channel == "email" and not lead.email:
-            self._send_json({"status": "error", "message": "Cannot send EMAIL: Lead has no email address."}, 400)
-            return
+            store = StateStore(db_path="outreach.db")
+            lead = get_lead_or_hetvi(lead_id)
 
-        if channel in ("sms", "whatsapp") and not lead.phone:
-            self._send_json({"status": "error", "message": f"Cannot send {channel.upper()}: Lead has no phone number."}, 400)
-            return
-
-        state = store.get_follow_up_state(lead.lead_id, channel)
-        follow_up_count = state["follow_up_count"] if state else 0
-        is_initial = state is None
-
-        dry_run = bool(payload.get("dry_run", False))
-
-        # Generate message for this cadence step
-        if channel == "email":
-            from message_generator import generate_email
-            target_count = (follow_up_count + 1) if not is_initial else 0
-            draft = generate_email(lead, follow_up_count=target_count)
-            if custom_subject:
-                draft.subject = custom_subject
-            if custom_body:
-                draft.body = custom_body
-            target = lead.email
-            if dry_run:
-                print(f"  [SAFE DEMO - DRY RUN] Simulating EMAIL to {lead.contact_name} ({target})")
-                ok = True
-            else:
-                from providers.email_provider import EmailProvider
-                provider = EmailProvider()
-                ok = provider.send(target, draft.subject, draft.body)
-        elif channel == "sms":
-            from message_generator import generate_sms
-            draft = generate_sms(lead)
-            if custom_body:
-                draft.body = custom_body
-            from phone_utils import normalize_to_e164
-            default_cc = "+91" if (getattr(lead, 'country', None) and str(lead.country).strip().lower() in ("india", "in", "+91", "91")) else "+1"
-            normalized_target = normalize_to_e164(lead.phone, default_country_code=default_cc)
-            if not normalized_target:
-                self._send_json({"status": "error", "message": f"Invalid phone number: {lead.phone}"}, 400)
+            if not lead:
+                self._send_json({"status": "error", "message": f"Lead {lead_id} not found in database"}, 404)
                 return
-            target = normalized_target
-            if dry_run:
-                print(f"  [SAFE DEMO - DRY RUN] Simulating SMS to {lead.contact_name} ({target})")
-                ok = True
-            else:
-                from providers.sms_provider import SMSProvider
-                provider = SMSProvider()
-                ok = provider.send(target, draft.body, country=getattr(lead, 'country', None))
-        else:
-            from message_generator import generate_whatsapp
-            draft = generate_whatsapp(lead)
-            if custom_body:
-                draft.body = custom_body
-            from phone_utils import normalize_to_e164
-            default_cc = "+91" if (getattr(lead, 'country', None) and str(lead.country).strip().lower() in ("india", "in", "+91", "91")) else "+1"
-            normalized_target = normalize_to_e164(lead.phone, default_country_code=default_cc)
-            if not normalized_target:
-                self._send_json({"status": "error", "message": f"Invalid phone number: {lead.phone}"}, 400)
+
+            # If lead was sourced from Hetvi and not yet in leads.csv, auto-persist it
+            csv_path = "data/leads.csv"
+            source = CSVLeadSource(csv_path=csv_path)
+            existing_leads = source.get_all_leads()
+            if not any(l.lead_id == lead.lead_id for l in existing_leads):
+                try:
+                    row = {
+                        "lead_id": lead.lead_id,
+                        "company": lead.company,
+                        "website": lead.website or "",
+                        "contact_name": lead.contact_name,
+                        "designation": lead.designation or "",
+                        "email": lead.email or "",
+                        "phone": lead.phone or "",
+                        "country": lead.country or "",
+                        "lead_score": "",
+                        "lead_status": "QUALIFIED",
+                        "primary_service": lead.primary_service or "",
+                        "personalization_hook": lead.personalization_hook or ""
+                    }
+                    with open(csv_path, mode="a", newline="", encoding="utf-8") as f:
+                        writer = csv_module.DictWriter(f, fieldnames=list(row.keys()))
+                        writer.writerow(row)
+                except Exception as e:
+                    print(f"[SendMessage] Warning saving lead to CSV: {e}")
+
+            if store.is_opted_out(lead.lead_id):
+                self._send_json({"status": "error", "message": "Lead is opted out"}, 400)
                 return
-            target = normalized_target
-            if dry_run:
-                print(f"  [SAFE DEMO - DRY RUN] Simulating WHATSAPP to {lead.contact_name} ({target})")
-                ok = True
-            else:
-                from providers.whatsapp_provider import WhatsAppProvider
-                provider = WhatsAppProvider()
-                ok = provider.send(target, draft.body, country=getattr(lead, 'country', None))
 
-        if ok:
-            msg_id = store.queue_for_approval(draft)
-            store.approve_message(msg_id, approved_by="Web Dashboard User (Safe Demo)" if dry_run else "Web Dashboard User")
-            store.mark_sent(msg_id)
-            if is_initial:
-                store.record_initial_send(lead.lead_id, channel)
-            else:
-                store.record_follow_up_sent(lead.lead_id, channel, follow_up_count + 1)
+            if channel == "email" and not lead.email:
+                self._send_json({"status": "error", "message": "Cannot send EMAIL: Lead has no email address."}, 400)
+                return
 
-            mode_prefix = "[Safe Demo] " if dry_run else ""
-            self._send_json({
-                "status": "success",
-                "message": f"{mode_prefix}Dispatched {channel.upper()} to {lead.contact_name} ({target})",
-                "follow_up_count": follow_up_count + 1 if not is_initial else 0,
-                "subject": getattr(draft, "subject", None),
-                "dry_run": dry_run
-            })
-        else:
-            self._send_json({"status": "error", "message": "Provider failed to send"}, 500)
+            if channel in ("sms", "whatsapp") and not lead.phone:
+                self._send_json({"status": "error", "message": f"Cannot send {channel.upper()}: Lead has no phone number."}, 400)
+                return
+
+            state = store.get_follow_up_state(lead.lead_id, channel)
+            follow_up_count = state["follow_up_count"] if state else 0
+            is_initial = state is None
+
+            dry_run = bool(payload.get("dry_run", False))
+
+            # Generate message for this cadence step
+            if channel == "email":
+                from message_generator import generate_email
+                target_count = (follow_up_count + 1) if not is_initial else 0
+                draft = generate_email(lead, follow_up_count=target_count)
+                if custom_subject:
+                    draft.subject = custom_subject
+                if custom_body:
+                    draft.body = custom_body
+                target = lead.email
+                if dry_run:
+                    print(f"  [SAFE DEMO - DRY RUN] Simulating EMAIL to {lead.contact_name} ({target})")
+                    ok = True
+                else:
+                    from providers.email_provider import EmailProvider
+                    provider = EmailProvider()
+                    ok = provider.send(target, draft.subject, draft.body)
+            elif channel == "sms":
+                from message_generator import generate_sms
+                draft = generate_sms(lead)
+                if custom_body:
+                    draft.body = custom_body
+                from phone_utils import normalize_to_e164
+                default_cc = "+91" if (getattr(lead, 'country', None) and str(lead.country).strip().lower() in ("india", "in", "+91", "91")) else "+1"
+                normalized_target = normalize_to_e164(lead.phone, default_country_code=default_cc)
+                if not normalized_target:
+                    self._send_json({"status": "error", "message": f"Invalid phone number: {lead.phone}"}, 400)
+                    return
+                target = normalized_target
+                if dry_run:
+                    print(f"  [SAFE DEMO - DRY RUN] Simulating SMS to {lead.contact_name} ({target})")
+                    ok = True
+                else:
+                    from providers.sms_provider import SMSProvider
+                    provider = SMSProvider()
+                    ok = provider.send(target, draft.body, country=getattr(lead, 'country', None))
+            else:
+                from message_generator import generate_whatsapp
+                draft = generate_whatsapp(lead)
+                if custom_body:
+                    draft.body = custom_body
+                from phone_utils import normalize_to_e164
+                default_cc = "+91" if (getattr(lead, 'country', None) and str(lead.country).strip().lower() in ("india", "in", "+91", "91")) else "+1"
+                normalized_target = normalize_to_e164(lead.phone, default_country_code=default_cc)
+                if not normalized_target:
+                    self._send_json({"status": "error", "message": f"Invalid phone number: {lead.phone}"}, 400)
+                    return
+                target = normalized_target
+                if dry_run:
+                    print(f"  [SAFE DEMO - DRY RUN] Simulating WHATSAPP to {lead.contact_name} ({target})")
+                    ok = True
+                else:
+                    from providers.whatsapp_provider import WhatsAppProvider
+                    provider = WhatsAppProvider()
+                    ok = provider.send(target, draft.body, country=getattr(lead, 'country', None))
+
+            if ok:
+                msg_id = store.queue_for_approval(draft)
+                store.approve_message(msg_id, approved_by="Web Dashboard User (Safe Demo)" if dry_run else "Web Dashboard User")
+                store.mark_sent(msg_id)
+                if is_initial:
+                    store.record_initial_send(lead.lead_id, channel)
+                else:
+                    store.record_follow_up_sent(lead.lead_id, channel, follow_up_count + 1)
+
+                mode_prefix = "[Safe Demo] " if dry_run else ""
+                self._send_json({
+                    "status": "success",
+                    "message": f"{mode_prefix}Dispatched {channel.upper()} to {lead.contact_name} ({target})",
+                    "follow_up_count": follow_up_count + 1 if not is_initial else 0,
+                    "subject": getattr(draft, "subject", None),
+                    "dry_run": dry_run
+                })
+            else:
+                self._send_json({"status": "error", "message": f"Provider failed to send {channel.upper()}. Check API keys or network connection."}, 500)
+        except Exception as e:
+            print(f"[SendMessage] Unhandled Exception: {e}")
+            self._send_json({"status": "error", "message": f"Dispatch error: {str(e)}"}, 500)
 
     def handle_get_dashboard(self):
         store = StateStore(db_path="outreach.db")
