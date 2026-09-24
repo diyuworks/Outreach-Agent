@@ -26,7 +26,7 @@ from escalation import process_reply
 from response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
 from phone_utils import normalize_to_e164
 
-PORT = 5050
+PORT = int(os.environ.get("PORT", 5050))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 HETVI_LEADS_CACHE = {}
