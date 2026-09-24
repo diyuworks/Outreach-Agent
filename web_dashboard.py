@@ -25,6 +25,7 @@ from message_generator import generate_all_channels
 from escalation import process_reply
 from response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
 from phone_utils import normalize_to_e164
+from lead_scoring import compute_dynamic_score, get_score_breakdown
 
 PORT = int(os.environ.get("PORT", 5050))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -117,6 +118,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.handle_get_lead_timeline(lead_id)
         elif path == "/api/fetch-hetvi-leads":
             self.handle_get_fetch_hetvi_leads()
+        elif path == "/api/score-breakdown":
+            lead_id = query.get("lead_id", [""])[0]
+            self.handle_get_score_breakdown(lead_id)
         elif path == "/api/daily-report":
             report_date = query.get("date", [None])[0]
             from daily_report import generate_report_text
@@ -708,6 +712,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
             print(f"[SendMessage] Unhandled Exception: {e}")
             self._send_json({"status": "error", "message": f"Dispatch error: {str(e)}"}, 500)
 
+    def handle_get_score_breakdown(self, lead_id):
+        """Return detailed dynamic score breakdown for a specific lead."""
+        if not lead_id:
+            self._send_json({"status": "error", "message": "lead_id is required"}, 400)
+            return
+        lead = get_lead_or_hetvi(lead_id)
+        if not lead:
+            self._send_json({"status": "error", "message": f"Lead {lead_id} not found"}, 404)
+            return
+        store = StateStore(db_path="outreach.db")
+        breakdown = get_score_breakdown(lead, store)
+        self._send_json({"status": "success", "lead_id": lead_id, "breakdown": breakdown})
+
     def handle_get_dashboard(self):
         store = StateStore(db_path="outreach.db")
         source = CSVLeadSource(csv_path="data/leads.csv")
@@ -730,7 +747,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "country": lead.country,
                 "city": crm.get("city") or lead.city,
                 "industry": crm.get("industry") or lead.industry,
-                "lead_score": lead.lead_score,
+                "lead_score": compute_dynamic_score(lead, store),
+                "base_score": lead.lead_score,
                 "lead_status": lead.lead_status.value,
                 "primary_service": lead.primary_service,
                 "personalization_hook": lead.personalization_hook,

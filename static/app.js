@@ -939,12 +939,22 @@ function renderTable() {
   const rowsHtml = filteredLeads.map(lead => {
     let scoreClass = 'score-med';
     const scoreVal = parseInt(lead.lead_score, 10);
+    const baseVal = parseInt(lead.base_score, 10);
     if (isNaN(scoreVal)) {
       scoreClass = 'score-none';
     } else if (scoreVal >= 85) {
       scoreClass = 'score-high';
     } else if (scoreVal < 70) {
       scoreClass = 'score-low';
+    }
+
+    // Score delta indicator (dynamic vs base)
+    let scoreDeltaHtml = '';
+    if (!isNaN(scoreVal) && !isNaN(baseVal) && scoreVal !== baseVal) {
+      const delta = scoreVal - baseVal;
+      const deltaSign = delta > 0 ? '+' : '';
+      const deltaClass = delta > 0 ? 'score-delta-up' : 'score-delta-down';
+      scoreDeltaHtml = `<span class="${deltaClass}" title="Dynamic adjustment: ${deltaSign}${delta} from base ${baseVal}">${deltaSign}${delta}</span>`;
     }
 
     const isNewLead = (lead.lead_status === 'NEW');
@@ -976,7 +986,7 @@ function renderTable() {
           ` : ''}
         </td>
         <td>
-          <span class="score-badge ${scoreClass}">${lead.lead_score ? escapeHtml(lead.lead_score) : '—'}</span>
+          <span class="score-badge ${scoreClass}" onclick="showScoreBreakdown('${lead.lead_id}')" style="cursor:pointer" title="Click for AI score breakdown">${lead.lead_score != null ? escapeHtml(lead.lead_score) : '—'}${scoreDeltaHtml}</span>
         </td>
         <td>
           <span class="service-tag ${!lead.primary_service ? 'service-tag-empty' : ''}">${lead.primary_service ? escapeHtml(lead.primary_service) : 'Unspecified'}</span>
@@ -2180,3 +2190,62 @@ function executeVoiceAction(action, params) {
   }
 }
 
+// --- DYNAMIC LEAD SCORING BREAKDOWN ---
+window.showScoreBreakdown = async function(leadId) {
+  try {
+    const res = await fetch(`/api/score-breakdown?lead_id=${encodeURIComponent(leadId)}`);
+    const data = await res.json();
+    if (data.status !== 'success') {
+      showToast('Could not load score breakdown', 'error');
+      return;
+    }
+    const b = data.breakdown;
+    const signalRows = b.signals.length > 0
+      ? b.signals.map(s => {
+          const icon = s.direction === 'boost' ? '🟢' : '🔴';
+          const sign = s.weight > 0 ? '+' : '';
+          return `<div class="score-signal-row"><span>${icon} ${escapeHtml(s.label)}</span><span class="score-signal-weight ${s.direction}">${sign}${s.weight}</span></div>`;
+        }).join('')
+      : '<div class="score-signal-row" style="color: var(--color-ink-muted); justify-content: center;">No engagement signals yet — score uses base value from Lead Gen</div>';
+
+    const existing = document.getElementById('scoreBreakdownPopup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'scoreBreakdownPopup';
+    popup.className = 'score-breakdown-overlay';
+    popup.innerHTML = `
+      <div class="score-breakdown-card">
+        <div class="score-breakdown-header">
+          <h3>🧠 AI Score Breakdown</h3>
+          <button class="score-breakdown-close" onclick="document.getElementById('scoreBreakdownPopup').remove()">✕</button>
+        </div>
+        <div class="score-breakdown-meters">
+          <div class="score-meter-item">
+            <div class="score-meter-label">Base Score</div>
+            <div class="score-meter-value">${b.base_score ?? '—'}</div>
+            <div class="score-meter-sub">From Lead Gen</div>
+          </div>
+          <div class="score-meter-arrow">${b.modifier >= 0 ? '➕' : '➖'}</div>
+          <div class="score-meter-item">
+            <div class="score-meter-label">AI Modifier</div>
+            <div class="score-meter-value ${b.modifier >= 0 ? 'score-mod-pos' : 'score-mod-neg'}">${b.modifier >= 0 ? '+' : ''}${b.modifier}</div>
+            <div class="score-meter-sub">${b.signal_count} signal${b.signal_count !== 1 ? 's' : ''} detected</div>
+          </div>
+          <div class="score-meter-arrow">＝</div>
+          <div class="score-meter-item score-meter-final">
+            <div class="score-meter-label">Dynamic Score</div>
+            <div class="score-meter-value">${b.final_score}</div>
+            <div class="score-meter-sub">Real-time</div>
+          </div>
+        </div>
+        <div class="score-signals-title">Active Signals</div>
+        <div class="score-signals-list">${signalRows}</div>
+      </div>
+    `;
+    popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
+    document.body.appendChild(popup);
+  } catch (err) {
+    showToast('Error loading score breakdown: ' + err.message, 'error');
+  }
+};
