@@ -18,9 +18,9 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import datetime, timedelta
-from state_store import StateStore
-from lead_source import CSVLeadSource
-from models import Lead, LeadStatus, ReplyClassification
+from core.state_store import StateStore
+from core.lead_source import CSVLeadSource
+from core.models import Lead, LeadStatus, ReplyClassification
 
 BASE_URL = "http://127.0.0.1:5050"
 

@@ -14,10 +14,10 @@ import os
 import sys
 from datetime import datetime
 
-from state_store import StateStore
-from models import Lead, LeadStatus, Channel, ReplyClassification, DraftMessage
-from escalation import process_reply
-from daily_report import generate_daily_report
+from core.state_store import StateStore
+from core.models import Lead, LeadStatus, Channel, ReplyClassification, DraftMessage
+from core.escalation import process_reply
+from services.daily_report import generate_daily_report
 
 
 def run_tests():

@@ -13,9 +13,9 @@ if sys.platform == "win32":
 
 import json
 import sqlite3
-from models import Lead, LeadStatus
-from state_store import StateStore
-from lead_source import CSVLeadSource
+from core.models import Lead, LeadStatus
+from core.state_store import StateStore
+from core.lead_source import CSVLeadSource
 
 def run_tests():
     print("=" * 70)

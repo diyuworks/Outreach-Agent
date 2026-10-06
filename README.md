@@ -33,54 +33,55 @@ pip install -r requirements.txt
 cp .env.example .env
 # Fill in .env ONLY for channels you want to send for real.
 # Leave any section blank and that channel runs in safe DRY RUN mode.
-python3 demo.py
+python web_dashboard.py                      # Interactive Web UI (http://localhost:5050)
 
-# Additional tools:
-python3 scheduler.py --interval 10             # Automated background polling daemon
-python3 scheduler.py --once                   # Run single check cycle (for cron)
-python3 dashboard.py                          # CRM status overview
-python3 web_dashboard.py                      # Interactive Web UI (http://localhost:5050)
-python3 followup_test.py --simulate-days-forward 4  # time-travel follow-ups
-python3 check_replies.py                       # auto-detect Gmail replies
+# Background & Automation Services:
+python -m services.scheduler --interval 10   # Automated background polling daemon
+python -m services.scheduler --once         # Run single check cycle (for cron)
+python -m services.daily_report             # Generate daily outreach performance report
+
+# Standalone Utility Scripts:
+python -m scripts.check_replies              # auto-detect Gmail replies
+python -m scripts.send_sms                   # quick test SMS sender
+python -m scripts.send_whatsapp              # quick test WhatsApp sender
 ```
-
-## To actually send a real email in the demo
-
-1. Use a Gmail account (a throwaway/test one is fine)
-2. Generate an App Password: https://myaccount.google.com/apppasswords
-3. Put your email + app password in `.env`
-4. Change the `email` in `data/leads.csv` to an address you can check
-5. Run `python3 demo.py` and approve the email when prompted
 
 ## Project structure
 
 ```
 outreach_agent/
-├── demo.py                  # run this for the live demo
-├── send_initial.py           # send first outreach email
-├── send_whatsapp.py          # send WhatsApp outreach (Twilio Sandbox / Meta API)
-├── webhook_server.py         # Twilio inbound reply webhook (SMS + WhatsApp)
-├── dashboard.py              # CRM status table (read-only)
-├── web_dashboard.py          # interactive web UI (http://localhost:5050)
-├── followup_test.py          # time-travel / fast-forward follow-up tester
-├── check_replies.py          # auto-detect Gmail replies
-├── simulate_reply.py         # simulate inbound reply & escalation
-├── scheduler.py              # automated background polling daemon
-├── escalation.py             # shared escalation display logic
-├── notifier.py               # multi-channel escalation alerts (email + Slack)
-├── models.py                 # Lead / DraftMessage / FollowUpState (Pydantic)
-├── lead_source.py             # LeadSource abstraction (CSV today, swap later)
-├── message_generator.py       # personalization logic per channel
-├── state_store.py             # SQLite: history, approvals, opt-outs, follow-ups
-├── follow_up_engine.py        # follow-up cadence state machine
-├── response_classifier.py     # classifies inbound replies
-├── providers/
-│   ├── email_provider.py      # Gmail SMTP (sending)
-│   ├── email_reader.py        # Gmail API (reading replies)
-│   ├── sms_provider.py        # Twilio SMS
-│   └── whatsapp_provider.py   # Twilio WhatsApp Sandbox + Meta Cloud API
-├── data/leads.csv             # sample/fictional demo leads
-└── .env.example
+├── web_dashboard.py          # Main Web Dashboard server (entry point)
+├── webhook_server.py         # Twilio inbound reply webhook listener
+├── core/                     # Core Business Logic & State Management
+│   ├── models.py             # Data schemas (Lead, Channel, DraftMessage, etc.)
+│   ├── state_store.py        # SQLite CRM & interaction persistence
+│   ├── lead_source.py        # Lead ingestion abstraction
+│   ├── lead_scoring.py       # Dynamic lead scoring engine
+│   ├── message_generator.py  # Personalized multi-channel copy generator
+│   ├── follow_up_engine.py   # Follow-up cadence state machine
+│   ├── response_classifier.py# Inbound reply intent classifier
+│   ├── escalation.py         # Human escalation workflow
+│   ├── notifier.py           # Multi-channel urgent escalation alerts
+│   └── phone_utils.py        # E.164 phone normalization utilities
+├── services/                 # Background & Feature Services
+│   ├── scheduler.py          # Automated background polling daemon
+│   ├── daily_report.py       # Performance & digest report generator
+│   └── voice_commands.py     # Voice command processing & safe actions
+├── scripts/                  # Standalone CLI tools & scripts
+│   ├── check_replies.py      # Gmail inbox reply scanner
+│   ├── send_sms.py           # CLI SMS sender
+│   └── send_whatsapp.py      # CLI WhatsApp sender
+├── providers/                # External Communication Providers
+│   ├── email_provider.py     # SMTP Email delivery
+│   ├── email_reader.py       # Gmail API reply ingestion
+│   ├── sms_provider.py       # Twilio SMS client
+│   ├── whatsapp_provider.py  # Twilio & Meta WhatsApp client
+│   ├── stt_provider.py       # Groq Whisper speech-to-text
+│   └── hetvi_lead_source.py  # External CRM lead fetcher
+├── static/                   # Frontend assets (HTML, CSS, JS)
+├── data/                     # Leads data & cached datasets
+├── tests/                    # Automated regression & integration test suite
+└── _deprecated/              # Archived legacy files
 ```
 
 ## Gmail API Setup (for `check_replies.py`)

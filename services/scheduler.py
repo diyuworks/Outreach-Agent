@@ -19,13 +19,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from lead_source import CSVLeadSource
-from state_store import StateStore
-from message_generator import generate_email, generate_sms, generate_whatsapp
-from follow_up_engine import next_action, FollowUpAction
-from response_classifier import classify_reply, needs_human_escalation
-from escalation import process_reply
-from notifier import EscalationNotifier
+from core.lead_source import CSVLeadSource
+from core.state_store import StateStore
+from core.message_generator import generate_email, generate_sms, generate_whatsapp
+from core.follow_up_engine import next_action, FollowUpAction
+from core.response_classifier import classify_reply, needs_human_escalation
+from core.escalation import process_reply
+from core.notifier import EscalationNotifier
 from providers.email_provider import EmailProvider
 from providers.sms_provider import SMSProvider
 from providers.whatsapp_provider import WhatsAppProvider

@@ -19,9 +19,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from lead_source import CSVLeadSource
-from state_store import StateStore
-from escalation import process_reply
+from core.lead_source import CSVLeadSource
+from core.state_store import StateStore
+from core.escalation import process_reply
 from providers.email_reader import fetch_replies
 
 

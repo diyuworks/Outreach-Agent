@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 """
 Verification tests for the 'new_decision_maker_introduced' trigger fix.
 """
-from response_classifier import (
+from core.response_classifier import (
     _detect_new_decision_maker_introduced,
     detect_additional_escalation_signals
 )

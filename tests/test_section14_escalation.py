@@ -8,11 +8,11 @@ if sys.platform == "win32":
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
         pass
-from models import Lead, ReplyClassification
-from response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
-from escalation import process_reply, print_escalation_summary
-from notifier import EscalationNotifier
-from state_store import StateStore
+from core.models import Lead, ReplyClassification
+from core.response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
+from core.escalation import process_reply, print_escalation_summary
+from core.notifier import EscalationNotifier
+from core.state_store import StateStore
 
 def run_tests():
     print("=" * 70)

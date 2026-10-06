@@ -20,14 +20,14 @@ import secrets
 from dotenv import load_dotenv
 load_dotenv()
 
-from lead_source import CSVLeadSource
-from state_store import StateStore
-from follow_up_engine import next_action, FollowUpAction
-from message_generator import generate_all_channels
-from escalation import process_reply
-from response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
-from phone_utils import normalize_to_e164
-from lead_scoring import compute_dynamic_score, get_score_breakdown
+from core.lead_source import CSVLeadSource
+from core.state_store import StateStore
+from core.follow_up_engine import next_action, FollowUpAction
+from core.message_generator import generate_all_channels
+from core.escalation import process_reply
+from core.response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
+from core.phone_utils import normalize_to_e164
+from core.lead_scoring import compute_dynamic_score, get_score_breakdown
 
 PORT = int(os.environ.get("PORT", 5050))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -52,7 +52,7 @@ def get_lead_or_hetvi(lead_id: str):
             print(f"[LeadLookup] Hetvi fetch error: {e}")
 
     if h_lead:
-        from models import Lead, LeadStatus
+        from core.models import Lead, LeadStatus
         return Lead(
             lead_id=h_lead.get("lead_id"),
             company=h_lead.get("company", ""),
@@ -165,7 +165,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.handle_get_score_breakdown(lead_id)
         elif path == "/api/daily-report":
             report_date = query.get("date", [None])[0]
-            from daily_report import generate_report_text
+            from services.daily_report import generate_report_text
             text = generate_report_text(report_date=report_date)
             self._send_json({"report": text})
         # Static Files
@@ -234,7 +234,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             except Exception:
                 text_command = post_data.decode("utf-8", errors="ignore")
 
-        from voice_commands import process_voice_command
+        from services.voice_commands import process_voice_command
         result = process_voice_command(audio_bytes=audio_bytes, text_command=text_command)
 
         # If action is add_note and company is identified, persist to CRM
@@ -679,7 +679,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             # Generate message for this cadence step
             if channel == "email":
-                from message_generator import generate_email
+                from core.message_generator import generate_email
                 target_count = (follow_up_count + 1) if not is_initial else 0
                 draft = generate_email(lead, follow_up_count=target_count)
                 if custom_subject:
@@ -695,11 +695,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     provider = EmailProvider()
                     ok = provider.send(target, draft.subject, draft.body)
             elif channel == "sms":
-                from message_generator import generate_sms
+                from core.message_generator import generate_sms
                 draft = generate_sms(lead)
                 if custom_body:
                     draft.body = custom_body
-                from phone_utils import normalize_to_e164
+                from core.phone_utils import normalize_to_e164
                 default_cc = "+91" if (getattr(lead, 'country', None) and str(lead.country).strip().lower() in ("india", "in", "+91", "91")) else "+1"
                 normalized_target = normalize_to_e164(lead.phone, default_country_code=default_cc)
                 if not normalized_target:
@@ -714,11 +714,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     provider = SMSProvider()
                     ok = provider.send(target, draft.body, country=getattr(lead, 'country', None))
             else:
-                from message_generator import generate_whatsapp
+                from core.message_generator import generate_whatsapp
                 draft = generate_whatsapp(lead)
                 if custom_body:
                     draft.body = custom_body
-                from phone_utils import normalize_to_e164
+                from core.phone_utils import normalize_to_e164
                 default_cc = "+91" if (getattr(lead, 'country', None) and str(lead.country).strip().lower() in ("india", "in", "+91", "91")) else "+1"
                 normalized_target = normalize_to_e164(lead.phone, default_country_code=default_cc)
                 if not normalized_target:
@@ -914,8 +914,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             new_leads.sort(key=contact_priority, reverse=True)
 
-            # Annotate each lead with phone reachability heuristic from phone_utils
-            from phone_utils import normalize_to_e164, is_likely_unreachable_for_sms_whatsapp
+            # Annotate each lead with phone reachability heuristic from core.phone_utils
+            from core.phone_utils import normalize_to_e164, is_likely_unreachable_for_sms_whatsapp
             for lead in new_leads:
                 raw_phone = lead.get("phone")
                 if raw_phone and str(raw_phone).strip():

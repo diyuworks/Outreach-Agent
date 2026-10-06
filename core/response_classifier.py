@@ -4,7 +4,7 @@ Demo version uses keyword matching — good enough to show the logic working liv
 (Production version could swap this for an LLM-based classifier behind the
 same function signature, without changing anything else in the pipeline.)
 """
-from models import ReplyClassification
+from core.models import ReplyClassification
 
 RULES = [
     (ReplyClassification.OPT_OUT, ["unsubscribe", "stop", "remove me", "opt out"]),

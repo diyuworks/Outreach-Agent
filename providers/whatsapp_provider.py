@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from phone_utils import normalize_to_e164
+from core.phone_utils import normalize_to_e164
 
 
 class WhatsAppProvider:

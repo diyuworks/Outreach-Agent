@@ -14,9 +14,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from lead_source import CSVLeadSource
-from message_generator import generate_sms
-from state_store import StateStore
+from core.lead_source import CSVLeadSource
+from core.message_generator import generate_sms
+from core.state_store import StateStore
 from providers.sms_provider import SMSProvider
 
 

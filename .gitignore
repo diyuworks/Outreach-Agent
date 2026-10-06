@@ -13,6 +13,9 @@ __pycache__/
 *$py.class
 *.tmp
 
+# Deprecated / archived files
+_deprecated/
+
 # Operating system files
 Thumbs.db
 Desktop.ini

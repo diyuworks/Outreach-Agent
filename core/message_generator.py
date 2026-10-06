@@ -3,7 +3,7 @@ Generates personalized outreach messages.
 Structure (per spec Section 4/11): observation -> problem -> how we help -> CTA.
 No fake urgency, no fabricated claims, no promised pricing/timelines.
 """
-from models import Lead, DraftMessage, Channel
+from core.models import Lead, DraftMessage, Channel
 
 YOUR_NAME = "Priya"
 YOUR_COMPANY = "SAUBHAGYAM"

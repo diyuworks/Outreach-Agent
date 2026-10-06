@@ -7,7 +7,7 @@ state store) needs to know or care where leads come from.
 import csv
 from abc import ABC, abstractmethod
 from typing import List
-from models import Lead, LeadStatus
+from core.models import Lead, LeadStatus
 
 
 class LeadSource(ABC):

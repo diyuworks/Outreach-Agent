@@ -14,7 +14,7 @@ Each signal contributes a weighted modifier to the base score.
 Score is always clamped to 0–100.
 
 Usage:
-    from lead_scoring import compute_dynamic_score, get_score_breakdown
+    from core.lead_scoring import compute_dynamic_score, get_score_breakdown
     score = compute_dynamic_score(lead, store)
     breakdown = get_score_breakdown(lead, store)
 """

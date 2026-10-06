@@ -3,9 +3,9 @@ Tests for Dynamic Lead Scoring Intelligence Engine.
 """
 import os
 import unittest
-from models import Lead
-from state_store import StateStore
-from lead_scoring import compute_dynamic_score, get_score_breakdown, recalculate_all_leads
+from core.models import Lead
+from core.state_store import StateStore
+from core.lead_scoring import compute_dynamic_score, get_score_breakdown, recalculate_all_leads
 
 
 class TestDynamicLeadScoring(unittest.TestCase):

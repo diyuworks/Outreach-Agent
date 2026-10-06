@@ -11,7 +11,7 @@ mostly mechanical: Initial Send -> Wait -> FollowUp1 -> Wait -> FollowUp2 ...
 """
 from datetime import date
 from enum import Enum
-from state_store import StateStore
+from core.state_store import StateStore
 
 
 class FollowUpAction(str, Enum):

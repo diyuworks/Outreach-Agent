@@ -14,9 +14,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from lead_source import CSVLeadSource
-from message_generator import generate_whatsapp
-from state_store import StateStore
+from core.lead_source import CSVLeadSource
+from core.message_generator import generate_whatsapp
+from core.state_store import StateStore
 from providers.whatsapp_provider import WhatsAppProvider
 
 

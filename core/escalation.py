@@ -6,9 +6,9 @@ the same escalation summary block without duplicating code.
 """
 import os
 from typing import Optional, List, Dict
-from models import Lead, ReplyClassification
-from response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
-from notifier import EscalationNotifier
+from core.models import Lead, ReplyClassification
+from core.response_classifier import classify_reply, needs_human_escalation, detect_additional_escalation_signals
+from core.notifier import EscalationNotifier
 from providers.email_provider import EmailProvider
 from providers.sms_provider import SMSProvider
 from providers.whatsapp_provider import WhatsAppProvider

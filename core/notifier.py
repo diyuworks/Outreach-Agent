@@ -21,7 +21,7 @@ import urllib.request
 from datetime import datetime
 from typing import Optional
 
-from models import Lead, ReplyClassification
+from core.models import Lead, ReplyClassification
 from providers.email_provider import EmailProvider
 from providers.sms_provider import SMSProvider
 

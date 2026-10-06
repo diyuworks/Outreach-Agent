@@ -6,7 +6,7 @@ and pending human-approval queue.
 import sqlite3
 from datetime import datetime, date, timedelta
 from typing import Optional
-from models import DraftMessage, ReplyClassification
+from core.models import DraftMessage, ReplyClassification
 
 
 class StateStore:
