@@ -14,6 +14,8 @@ import mimetypes
 from datetime import datetime, date, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+import base64
+import secrets
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -93,13 +95,53 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
+    def _check_auth(self) -> bool:
+        expected_user = os.getenv("AUTH_USERNAME")
+        expected_pass = os.getenv("AUTH_PASSWORD")
+        if not expected_user or not expected_pass:
+            # No credentials configured — fail closed (deny), don't silently
+            # allow everything through. Log a clear warning once at startup
+            # instead, so misconfiguration is loud, not silently insecure.
+            return False
+
+        auth_header = self.headers.get("Authorization", "")
+        if not auth_header.startswith("Basic "):
+            return False
+        try:
+            decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
+            username, password = decoded.split(":", 1)
+        except Exception:
+            return False
+
+        return (
+            secrets.compare_digest(username, expected_user)
+            and secrets.compare_digest(password, expected_pass)
+        )
+
+    def _require_auth(self) -> bool:
+        """Returns True if authorized. If not, sends the 401 challenge and
+        returns False — caller must return immediately after a False result."""
+        if self._check_auth():
+            return True
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="Outreach Agent"')
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", "12")
+        self.end_headers()
+        self.wfile.write(b"Unauthorized")
+        return False
+
     def do_HEAD(self):
+        if not self._require_auth():
+            return
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_GET(self):
+        if not self._require_auth():
+            return
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
@@ -138,6 +180,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_error(404, "Not Found")
 
     def do_POST(self):
+        if not self._require_auth():
+            return
         parsed = urlparse(self.path)
         path = parsed.path
 
@@ -1070,6 +1114,17 @@ import threading
 
 
 def start_server():
+    expected_user = os.getenv("AUTH_USERNAME")
+    expected_pass = os.getenv("AUTH_PASSWORD")
+    if not expected_user or not expected_pass:
+        print("\n" + "!" * 70)
+        print("[SECURITY WARNING] AUTH_USERNAME and/or AUTH_PASSWORD are not set!")
+        print("[SECURITY WARNING] Server is running in FAIL-CLOSED mode.")
+        print("[SECURITY WARNING] ALL dashboard & API requests will be DENIED with HTTP 401.")
+        print("!" * 70 + "\n")
+    else:
+        print(f"\n[SECURITY] HTTP Basic Authentication enabled (user: {expected_user})\n")
+
     server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)
     url = f"http://localhost:{PORT}"
     print("\n=======================================================")
